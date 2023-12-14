@@ -7,37 +7,37 @@ void setup() { //<>//
 
 //TODO - tuning
 int N = 150; //smoke resolution
-float kDiff = 0.00001; //diffusion constant
-float visc = 0.00000001; //viscosity
-float dens[][] = new float[N+2][N+2]; //density is from 0 - 100
-float dens0[][] = new float[N+2][N+2];
-float source[][] = new float[N+2][N+2];
-float vx[][] = new float[N+2][N+2];
-float vy[][] = new float[N+2][N+2];
-float vx0[][] = new float[N+2][N+2];
-float vy0[][] = new float[N+2][N+2];
+double kDiff = 0.00001; //diffusion constant
+double visc = 0; //viscosity
+double dens[][] = new double[N+2][N+2]; //density is from 0 - 100
+double dens0[][] = new double[N+2][N+2];
+double source[][] = new double[N+2][N+2];
+double vx[][] = new double[N+2][N+2];
+double vy[][] = new double[N+2][N+2];
+double vx0[][] = new double[N+2][N+2];
+double vy0[][] = new double[N+2][N+2];
 boolean obs[][] = new boolean[N+2][N+2]; //TODO - obstacle physics
 
 //TODO - dens and source should be clamped to some max val
-void add_source(float dens[][], float source[][], float dt) {
-  for (int i = 1; i <= N; i++) {
-    for (int j = 1; j <= N; j++) {
+void add_source(double dens[][], double source[][], double dt) {
+  for (int i = 0; i <= N+1; i++) {
+    for (int j = 0; j <= N+1; j++) {
       dens[i][j] += source[i][j] * dt;
     }
   }
 }
 
 void init_dens() {
-  for (int i = 1; i <= N; i++) {
-    for (int j = 1; j <= N; j++) {
+  for (int i = 0; i <= N+1; i++) {
+    for (int j = 0; j <= N+1; j++) {
       dens[i][j] = 0;
     }
   }
 }
 
 void init_vel() {
-  for (int i = 1; i <= N; i++) {
-    for (int j = 1; j <= N; j++) {
+  for (int i = 0; i <= N+1; i++) {
+    for (int j = 0; j <= N+1; j++) {
       vx[i][j] = 0;
       vy[i][j] = 0;
     }
@@ -49,22 +49,22 @@ void add_vel() {
   for (int i = 1; i <= N; i++) {
     for (int j = 1; j <= N; j++) {
       vx[i][j] += random(-0.05, 0.05);
-      vy[i][j] += 0.005;
+      vy[i][j] += -0.0025;
     }
   }
 }
 
-void diffuse(int b, float dens[][], float dens0[][], float kDiff, float dt) {
-  float a = dt * kDiff * N * N;
+void diffuse(int b, double dens[][], double dens0[][], double kDiff, double dt) {
+  double a = dt * kDiff * N * N;
 
   for (int k = 0; k < 20; k++) { //Gauss-Sidel iterations
     for (int i = 1; i <= N; i++) {
       for (int j = 1; j <= N; j++) {
-        float sum = 0;
-        if (i-1>0) sum += dens[i-1][j];
-        if (i+1<N) sum += dens[i+1][j];
-        if (j-1>0) sum += dens[i][j-1];
-        if (j+1<N) sum += dens[i][j+1];
+        double sum = 0;
+        sum += dens[i-1][j];
+        sum += dens[i+1][j];
+        sum += dens[i][j-1];
+        sum += dens[i][j+1];
         dens[i][j] = (dens0[i][j] + a*(sum))/(1+4*a);
       }
     }
@@ -72,48 +72,48 @@ void diffuse(int b, float dens[][], float dens0[][], float kDiff, float dt) {
   }
 }
 
-void swap(float x0[][], float x[][]) {
+void swap(double x0[][], double x[][]) {
   for (int i = 0; i <= N; i++) {
     for (int j = 0; j <= N; j++) {
-      float temp = x[i][j];
+      double temp = x[i][j];
       x[i][j] = x0[i][j];
       x0[i][j] = temp;
     }
   }
 }
 
-void advect(int b, float dens[][], float dens0[][], float vx[][], float vy[][], float dt) {
-  float dt0 = dt*N;
+void advect(int b, double dens[][], double dens0[][], double vx[][], double vy[][], double dt) {
+  double dt0 = dt*N;
 
   for (int i = 1; i <= N; i++) {
     for (int j = 1; j <= N; j++) {
-      float x = i-dt0*vx[i][j];
-      float y = j-dt0*vy[i][j];
+      double x = i-dt0*vx[i][j];
+      double y = j-dt0*vy[i][j];
 
       if (x<0.5) x=0.5;
       if (x>N+0.5) x=N+0.5;
 
-      int i0=int(x);
+      int i0=int((float)x);
       int i1=i0+1;
 
       if (y<0.5) y=0.5;
       if (y>N+0.5) y=N+0.5;
 
-      int j0=int(y);
+      int j0=int((float)y);
       int j1=j0+1;
 
-      float s1 = x-i0;
-      float s0 = 1-s1;
-      float t1 = y-j0;
-      float t0 = 1-t1;
+      double s1 = x-i0;
+      double s0 = 1-s1;
+      double t1 = y-j0;
+      double t0 = 1-t1;
 
-      float sum0 = 0;
-      if (i0 < N && j0 < N) sum0 += t0*dens0[i0][j0];
-      if (i0 < N && j1 < N) sum0 += t1*dens0[i0][j1];
+      double sum0 = 0;
+      sum0 += t0*dens0[i0][j0];
+      sum0 += t1*dens0[i0][j1];
 
-      float sum1 = 0;
-      if (i1 < N && j0 < N) sum1 += t0*dens0[i1][j0];
-      if (i1 < N && j1 < N) sum1 += t1*dens0[i1][j1];
+      double sum1 = 0;
+      sum1 += t0*dens0[i1][j0];
+      sum1 += t1*dens0[i1][j1];
 
       dens[i][j] = s0*sum0 + s1*sum1;
     }
@@ -122,7 +122,7 @@ void advect(int b, float dens[][], float dens0[][], float vx[][], float vy[][], 
 }
 
 //TODO - boundary (bugged)
-void set_bnd (int b, float x[][]) {
+void set_bnd (int b, double x[][]) {
   int i;
   for ( i=1 ; i <= N ; i++ ) {
     x[0][i] = b==1 ? -x[1][i] : x[1][i];
@@ -136,17 +136,17 @@ void set_bnd (int b, float x[][]) {
   x[N+1][N+1] = 0.5*(x[N][N+1]+x[N+1][N]);
 }
 
-void project(float u[][], float v[][], float p[][], float div[][]) {
-  float h = 1.0/((float)N);
-  float sum = 0;
+void project(double u[][], double v[][], double p[][], double div[][]) {
+  double h = 1.0/((double)N);
+  double sum = 0;
 
   for (int i = 1; i <= N; i++) {
     for (int j = 1; j <= N; j++) {
       sum = 0;
-      if (i-1>0) sum -= u[i-1][j];
-      if (i+1<N) sum += u[i+1][j];
-      if (j-1>0) sum -= v[i][j-1];
-      if (j+1<N) sum += v[i][j+1];
+      sum -= u[i-1][j];
+      sum += u[i+1][j];
+      sum -= v[i][j-1];
+      sum += v[i][j+1];
       div[i][j] = -0.5*h*(sum);
       p[i][j] = 0;
     }
@@ -157,10 +157,10 @@ void project(float u[][], float v[][], float p[][], float div[][]) {
     for (int i = 1; i <= N; i++) {
       for (int j = 1; j <= N; j++) {
         sum = 0;
-        if (i-1>0) sum += p[i-1][j];
-        if (i+1<N) sum += p[i+1][j];
-        if (j-1>0) sum += p[i][j-1];
-        if (j+1<N) sum += p[i][j+1];
+        sum += p[i-1][j];
+        sum += p[i+1][j];
+        sum += p[i][j-1];
+        sum += p[i][j+1];
         p[i][j] = (div[i][j] + sum)/4;
       }
     }
@@ -171,20 +171,20 @@ void project(float u[][], float v[][], float p[][], float div[][]) {
   for (int i = 1; i <= N; i++) {
     for (int j = 1; j <= N; j++) {
       sum = 0;
-      if (i-1>0) sum -= p[i-1][j];
-      if (i+1<N) sum += p[i+1][j];
+      sum -= p[i-1][j];
+      sum += p[i+1][j];
       u[i][j] -= 0.5*(sum)/h;
 
       sum = 0;
-      if (j-1>0) sum -= p[i][j-1];
-      if (j+1<N) sum += p[i][j+1];
+      sum -= p[i][j-1];
+      sum += p[i][j+1];
       v[i][j] -= 0.5*(sum)/h;
     }
   }
-  set_bnd(1,u);set_bnd(2,v);
+  set_bnd(1,u); set_bnd(2,v);
 }
 
-void update_dens(float dt) {
+void update_dens(double dt) {
   add_source(dens, source, dt);
   swap(dens0, dens);
   diffuse(0, dens, dens0, kDiff, dt);
@@ -192,7 +192,7 @@ void update_dens(float dt) {
   advect(0, dens, dens0, vx, vy, dt);
 }
 
-void update_vel(float dt) {
+void update_vel(double dt) {
   add_source(vx, vx0, dt);
   add_source(vy, vy0, dt);
 
@@ -215,10 +215,10 @@ void update_vel(float dt) {
 
 void mouseUpdate() {
   if (mouseX < height && mouseX > 0 && mouseY > 0 && mouseY < height) { // make sure mouse is actually in the window first
-    float sourceRate = 70;
-    float densRate = 40;
-    int i = (int)mouseX * N / height;
-    int j = (int)mouseY * N / height;
+    double sourceRate = 70;
+    double densRate = 40;
+    int i = (int)mouseX * (N+2) / height;
+    int j = (int)mouseY * (N+2) / height;
     if (sourceMode) {
       source[i][j] += sourceRate;
       if (i-1>0) source[i-1][j] += sourceRate;
@@ -227,10 +227,10 @@ void mouseUpdate() {
       if (j+1<N) source[i][j+1] += sourceRate;
     } else if (smokeMode) {
       dens[i][j] += densRate;
-      if (i-1>0) dens[i-1][j] += densRate;
-      if (i+1<N) dens[i+1][j] += densRate;
-      if (j-1>0) dens[i][j-1] += densRate;
-      if (j+1<N) dens[i][j+1] += densRate;
+      //if (i-1>0) dens[i-1][j] += densRate;
+      //if (i+1<N) dens[i+1][j] += densRate;
+      //if (j-1>0) dens[i][j-1] += densRate;
+      //if (j+1<N) dens[i][j+1] += densRate;
     } else if (obsMode) {
       obs[i][j] = true;
       if (i-1>0) obs[i-1][j] = true;
@@ -287,32 +287,34 @@ void draw() {
   fill(255, 255, 255);
   
   if(!paused) {
-    float dt = 1/frameRate;
+    double dt = 1/frameRate;
     add_vel();
     update_vel(dt);
     update_dens(dt);
   }
 
   //draw grid contents
+  // TODO - needs to be adjusted because the grid was adjusted
   rectMode(CORNER);
-  float d = height/((float)N);
-  for (int i = 0; i <= N; i++) {
-    for (int j = 0; j <= N; j++) {
-      float c = (dens[i][j]/100) * 255;
+  double d = height/((double)(N+2));
+  for (int i = 0; i <= N+1; i++) {
+    for (int j = 0; j <= N+1; j++) {
+      double c = (dens[i][j]/100) * 255;
       if (c != 0) {
-        fill(c);
-        rect((i * d), (j * d), d, d);
+        fill((float)c);
+        //if(i == N) fill (0, 255, 0);
+        rect((float)(i * d), (float)(j * d), (float)d, (float)d);
       }
 
       c = (source[i][j]/500) * 255;
       if (c != 0) {
-        fill(c, 50, 50, 255);
-        rect((i * d), (j * d), d, d);
+        fill((float)c, 50, 50, 255);
+        rect((float)(i * d), (float)(j * d), (float)d, (float)d);
       }
 
       fill(204, 200, 84);
       if (obs[i][j]) {
-        rect((i * d), (j * d), d, d);
+        rect((float)(i * d), (float)(j * d), (float)d, (float)d);
       }
     }
   }

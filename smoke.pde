@@ -1,12 +1,11 @@
 void setup() { //<>//
   size(750, 750, P3D);
   surface.setTitle("Final Project - Smoke");
-  init_dens();
-  init_vel();
+  init();
 }
 
 int N = 150; //smoke resolution
-double kDiff = 0.00001; //diffusion constant
+double kDiff = 0.0001; //diffusion constant
 double visc = 0; //viscosity
 double dens[][] = new double[N+2][N+2]; //density is from 0 - 100
 double dens0[][] = new double[N+2][N+2];
@@ -15,9 +14,8 @@ double vx[][] = new double[N+2][N+2];
 double vy[][] = new double[N+2][N+2];
 double vx0[][] = new double[N+2][N+2];
 double vy0[][] = new double[N+2][N+2];
-boolean obs[][] = new boolean[N+2][N+2]; //TODO - obstacle physics
+int obs[][] = new int[N+2][N+2]; // 0 = occupied by obstacle
 
-//TODO - dens and source should be clamped to some max val
 void add_source(double dens[][], double source[][], double dt) {
   for (int i = 0; i <= N+1; i++) {
     for (int j = 0; j <= N+1; j++) {
@@ -26,19 +24,13 @@ void add_source(double dens[][], double source[][], double dt) {
   }
 }
 
-void init_dens() {
+void init() {
   for (int i = 0; i <= N+1; i++) {
     for (int j = 0; j <= N+1; j++) {
       dens[i][j] = 0;
-    }
-  }
-}
-
-void init_vel() {
-  for (int i = 0; i <= N+1; i++) {
-    for (int j = 0; j <= N+1; j++) {
       vx[i][j] = 0;
       vy[i][j] = 0;
+      obs[i][j] = 1;
     }
   }
 }
@@ -46,7 +38,7 @@ void init_vel() {
 void add_vel(double dt) {
   for (int i = 0; i <= N+1; i++) {
     for (int j = 0; j <= N+1; j++) {
-      vx[i][j] += random(-0.05, 0.05);
+      vx[i][j] += random(-0.01, 0.01);
       vy[i][j] += -0.4 * dt;
     }
   }
@@ -71,8 +63,8 @@ void diffuse(int b, double dens[][], double dens0[][], double kDiff, double dt) 
 }
 
 void swap(double x0[][], double x[][]) {
-  for (int i = 1; i <= N; i++) {
-    for (int j = 1; j <= N; j++) {
+  for (int i = 0; i <= N+1; i++) {
+    for (int j = 0; j <= N+1; j++) {
       double temp = x[i][j];
       x[i][j] = x0[i][j];
       x0[i][j] = temp;
@@ -119,7 +111,6 @@ void advect(int b, double dens[][], double dens0[][], double vx[][], double vy[]
   set_bnd(b, dens);
 }
 
-//TODO - boundary (bugged)
 void set_bnd (int b, double x[][]) {
   for ( int i=1; i <= N; i++ ) {
     x[0][i] = b==1 ? -x[1][i] : x[1][i];
@@ -127,20 +118,23 @@ void set_bnd (int b, double x[][]) {
     x[i][0] = b==2 ? -x[i][1] : x[i][1];
     x[i][N+1] = b==2 ? -x[i][N] : x[i][N];
   }
-  
-  // rudimentary obstacle code, can make it more sophisticated later 
+
+  // rudimentary obstacle code, can make it more sophisticated later
   for (int i = 1; i <= N; i++) {
     for (int j = 1; j <= N; j++) {
-      if (obs[i][j]) {
-        x[i-1][j] += x[i][j]/4;
-        x[i+1][j] += x[i][j]/4;
-        x[i][j-1] += x[i][j]/4;
-        x[i][j+1] += x[i][j]/4;
+      if (obs[i][j] == 0 && x[i][j] != 0) {
+        double sum = obs[i-1][j] + obs[i+1][j] + obs[i][j-1] + obs[i][j+1]; // how much it spreads to each nearby cell
+        if (sum == 0)
+          continue;
+        x[i-1][j] += x[i][j] * obs[i-1][j]/sum;
+        x[i+1][j] += x[i][j] * obs[i+1][j]/sum;
+        x[i][j-1] += x[i][j] * obs[i][j-1]/sum;
+        x[i][j+1] += x[i][j] * obs[i][j+1]/sum;
         x[i][j] = 0;
       }
     }
   }
-  
+
   x[0][0] = 0.5*(x[1][0]+x[0][1]);
   x[0][N+1] = 0.5*(x[1][N+1]+x[0][N]);
   x[N+1][0] = 0.5*(x[N][0]+x[N+1][1]);
@@ -230,8 +224,8 @@ void update_vel(double dt) {
 
 void mouseUpdate() {
   if (mouseX < height && mouseX > 0 && mouseY > 0 && mouseY < height) { // make sure mouse is actually in the window first
-    double sourceRate = 70;
-    double densRate = 30;
+    double sourceRate = 7;
+    double densRate = 3;
     int i = (int)mouseX * (N+2) / height;
     int j = (int)mouseY * (N+2) / height;
     if (i > 1 && i < N && j > 1 && j < N) {
@@ -248,11 +242,11 @@ void mouseUpdate() {
         dens[i][j-1] += densRate;
         dens[i][j+1] += densRate;
       } else if (obsMode) {
-        obs[i][j] = true;
-        obs[i-1][j] = true;
-        obs[i+1][j] = true;
-        obs[i][j-1] = true;
-        obs[i][j+1] = true;
+        obs[i][j] = 0;
+        obs[i-1][j] = 0;
+        obs[i+1][j] = 0;
+        obs[i][j-1] = 0;
+        obs[i][j+1] = 0;
       }
     }
   }
@@ -287,8 +281,7 @@ void keyPressed() {
     println("obstacle mode =", obsMode);
   }
   if (key == 'z') {
-    init_vel();
-    init_dens();
+    init();
   }
   if (key == ' ') {
     paused = !paused;
@@ -298,7 +291,7 @@ void keyPressed() {
 
 void draw() {
 
-  //println("fps:", frameRate);
+  println("fps:", frameRate);
   background(0);
   noStroke();
   fill(255, 255, 255);
@@ -314,21 +307,20 @@ void draw() {
   double d = height/((double)(N+2));
   for (int i = 0; i <= N+1; i++) {
     for (int j = 0; j <= N+1; j++) {
-      double c = (dens[i][j]/100) * 255;
-      if (c != 0) {
+      double c = (dens[i][j]/10) * 255;
+      if (c > 0) {
         fill((float)c);
-        //if(i == N) fill (0, 255, 0);
         rect((float)(i * d), (float)(j * d), (float)d, (float)d);
       }
 
-      c = (source[i][j]/500) * 255;
+      c = (source[i][j]/50) * 255;
       if (c != 0) {
         fill((float)c, 50, 50, 255);
         rect((float)(i * d), (float)(j * d), (float)d, (float)d);
       }
 
       fill(204, 200, 84);
-      if (obs[i][j]) {
+      if (obs[i][j] == 0) {
         rect((float)(i * d), (float)(j * d), (float)d, (float)d);
       }
     }

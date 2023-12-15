@@ -5,7 +5,6 @@ void setup() { //<>//
   init_vel();
 }
 
-//TODO - tuning
 int N = 150; //smoke resolution
 double kDiff = 0.00001; //diffusion constant
 double visc = 0; //viscosity
@@ -44,12 +43,11 @@ void init_vel() {
   }
 }
 
-// TODO - tuning
-void add_vel() {
-  for (int i = 1; i <= N; i++) {
-    for (int j = 1; j <= N; j++) {
+void add_vel(double dt) {
+  for (int i = 0; i <= N+1; i++) {
+    for (int j = 0; j <= N+1; j++) {
       vx[i][j] += random(-0.05, 0.05);
-      vy[i][j] += -0.0025;
+      vy[i][j] += -0.4 * dt;
     }
   }
 }
@@ -65,7 +63,7 @@ void diffuse(int b, double dens[][], double dens0[][], double kDiff, double dt) 
         sum += dens[i+1][j];
         sum += dens[i][j-1];
         sum += dens[i][j+1];
-        dens[i][j] = (dens0[i][j] + a*(sum))/(1+4*a);
+        dens[i][j] = (dens0[i][j] + a*sum)/(1+4*a);
       }
     }
     set_bnd(b, dens);
@@ -73,8 +71,8 @@ void diffuse(int b, double dens[][], double dens0[][], double kDiff, double dt) 
 }
 
 void swap(double x0[][], double x[][]) {
-  for (int i = 0; i <= N; i++) {
-    for (int j = 0; j <= N; j++) {
+  for (int i = 1; i <= N; i++) {
+    for (int j = 1; j <= N; j++) {
       double temp = x[i][j];
       x[i][j] = x0[i][j];
       x0[i][j] = temp;
@@ -123,15 +121,28 @@ void advect(int b, double dens[][], double dens0[][], double vx[][], double vy[]
 
 //TODO - boundary (bugged)
 void set_bnd (int b, double x[][]) {
-  int i;
-  for ( i=1 ; i <= N ; i++ ) {
+  for ( int i=1; i <= N; i++ ) {
     x[0][i] = b==1 ? -x[1][i] : x[1][i];
     x[N+1][i] = b==1 ? -x[N][i] : x[N][i];
     x[i][0] = b==2 ? -x[i][1] : x[i][1];
     x[i][N+1] = b==2 ? -x[i][N] : x[i][N];
   }
+  
+  // rudimentary obstacle code, can make it more sophisticated later 
+  for (int i = 1; i <= N; i++) {
+    for (int j = 1; j <= N; j++) {
+      if (obs[i][j]) {
+        x[i-1][j] += x[i][j]/4;
+        x[i+1][j] += x[i][j]/4;
+        x[i][j-1] += x[i][j]/4;
+        x[i][j+1] += x[i][j]/4;
+        x[i][j] = 0;
+      }
+    }
+  }
+  
   x[0][0] = 0.5*(x[1][0]+x[0][1]);
-  x[0][N+1] = 0.5*(x[1][N]+x[0][N]);
+  x[0][N+1] = 0.5*(x[1][N+1]+x[0][N]);
   x[N+1][0] = 0.5*(x[N][0]+x[N+1][1]);
   x[N+1][N+1] = 0.5*(x[N][N+1]+x[N+1][N]);
 }
@@ -151,7 +162,8 @@ void project(double u[][], double v[][], double p[][], double div[][]) {
       p[i][j] = 0;
     }
   }
-  set_bnd(0,div); set_bnd(0,p);
+  set_bnd(0, div);
+  set_bnd(0, p);
 
   for (int k = 0; k < 20; k++) { //Gauss-Sidel iterations
     for (int i = 1; i <= N; i++) {
@@ -164,8 +176,7 @@ void project(double u[][], double v[][], double p[][], double div[][]) {
         p[i][j] = (div[i][j] + sum)/4;
       }
     }
-    set_bnd(0,p);
-    
+    set_bnd(0, p);
   }
 
   for (int i = 1; i <= N; i++) {
@@ -181,11 +192,13 @@ void project(double u[][], double v[][], double p[][], double div[][]) {
       v[i][j] -= 0.5*(sum)/h;
     }
   }
-  set_bnd(1,u); set_bnd(2,v);
+  set_bnd(1, u);
+  set_bnd(2, v);
 }
 
 void update_dens(double dt) {
   add_source(dens, source, dt);
+  //add_source(dens, dens0, dt);
   swap(dens0, dens);
   diffuse(0, dens, dens0, kDiff, dt);
   swap(dens0, dens);
@@ -193,6 +206,8 @@ void update_dens(double dt) {
 }
 
 void update_vel(double dt) {
+  add_vel(dt);
+
   add_source(vx, vx0, dt);
   add_source(vy, vy0, dt);
 
@@ -216,27 +231,29 @@ void update_vel(double dt) {
 void mouseUpdate() {
   if (mouseX < height && mouseX > 0 && mouseY > 0 && mouseY < height) { // make sure mouse is actually in the window first
     double sourceRate = 70;
-    double densRate = 40;
+    double densRate = 30;
     int i = (int)mouseX * (N+2) / height;
     int j = (int)mouseY * (N+2) / height;
-    if (sourceMode) {
-      source[i][j] += sourceRate;
-      if (i-1>0) source[i-1][j] += sourceRate;
-      if (i+1<N) source[i+1][j] += sourceRate;
-      if (j-1>0) source[i][j-1] += sourceRate;
-      if (j+1<N) source[i][j+1] += sourceRate;
-    } else if (smokeMode) {
-      dens[i][j] += densRate;
-      //if (i-1>0) dens[i-1][j] += densRate;
-      //if (i+1<N) dens[i+1][j] += densRate;
-      //if (j-1>0) dens[i][j-1] += densRate;
-      //if (j+1<N) dens[i][j+1] += densRate;
-    } else if (obsMode) {
-      obs[i][j] = true;
-      if (i-1>0) obs[i-1][j] = true;
-      if (i+1<N) obs[i+1][j] = true;
-      if (j-1>0) obs[i][j-1] = true;
-      if (j+1<N) obs[i][j+1] = true;
+    if (i > 1 && i < N && j > 1 && j < N) {
+      if (sourceMode) {
+        source[i][j] += sourceRate;
+        source[i-1][j] += sourceRate;
+        source[i+1][j] += sourceRate;
+        source[i][j-1] += sourceRate;
+        source[i][j+1] += sourceRate;
+      } else if (smokeMode) {
+        dens[i][j] += densRate;
+        dens[i-1][j] += densRate;
+        dens[i+1][j] += densRate;
+        dens[i][j-1] += densRate;
+        dens[i][j+1] += densRate;
+      } else if (obsMode) {
+        obs[i][j] = true;
+        obs[i-1][j] = true;
+        obs[i+1][j] = true;
+        obs[i][j-1] = true;
+        obs[i][j+1] = true;
+      }
     }
   }
 }
@@ -285,16 +302,14 @@ void draw() {
   background(0);
   noStroke();
   fill(255, 255, 255);
-  
-  if(!paused) {
+
+  if (!paused) {
     double dt = 1/frameRate;
-    add_vel();
     update_vel(dt);
     update_dens(dt);
   }
 
   //draw grid contents
-  // TODO - needs to be adjusted because the grid was adjusted
   rectMode(CORNER);
   double d = height/((double)(N+2));
   for (int i = 0; i <= N+1; i++) {

@@ -124,13 +124,16 @@ void set_bnd (int b, double x[][]) {
     for (int j = 1; j <= N; j++) {
       if (obs[i][j] == 0 && x[i][j] != 0) {
         double sum = obs[i-1][j] + obs[i+1][j] + obs[i][j-1] + obs[i][j+1]; // how much it spreads to each nearby cell
+        double xVal = x[i][j];
+        x[i][j] = 0;
+        
         if (sum == 0)
           continue;
-        x[i-1][j] += x[i][j] * obs[i-1][j]/sum;
-        x[i+1][j] += x[i][j] * obs[i+1][j]/sum;
-        x[i][j-1] += x[i][j] * obs[i][j-1]/sum;
-        x[i][j+1] += x[i][j] * obs[i][j+1]/sum;
-        x[i][j] = 0;
+          
+        x[i-1][j] += xVal * obs[i-1][j]/sum;
+        x[i+1][j] += xVal * obs[i+1][j]/sum;
+        x[i][j-1] += xVal * obs[i][j-1]/sum;
+        x[i][j+1] += xVal * obs[i][j+1]/sum;
       }
     }
   }

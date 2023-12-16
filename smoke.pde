@@ -1,13 +1,34 @@
-void setup() { //<>//
+import controlP5.*; //<>//
+ControlP5 cp5;
+
+void setup() {
   size(750, 750, P3D);
   surface.setTitle("Final Project - Smoke");
   init();
+
+  // UI HERE
+  cp5 = new ControlP5(this);
+  cp5.addButton("Reset").setPosition(10, 10).setSize(80, 30);
+  cp5.addSlider("WindX")
+    .setPosition(10, 50)
+    .setWidth(200)
+    .setRange(-3, 3)
+    .setValue(0);
+  cp5.addSlider("WindY")
+    .setPosition(10, 80)
+    .setWidth(200)
+    .setRange(-3, 3)
+    .setValue(0);
+  cp5.addTextarea("Instructions")
+    .setPosition(10, 200)
+    .setSize(200, 300)
+    .setText("Instructions:\n\nLeft-click to draw, depending on mode.\nDrag mouse for continuous input.\nPress 'r' to toggle source mode.\nPress 't' to toggle smoke mode.\nPress 'y' to toggle obstacle mode.\nPress 'u' to turn off all modes.");
 }
 
 int N = 150; //smoke resolution
 double kDiff = 0.0001; //diffusion constant
 double visc = 0; //viscosity
-double dens[][] = new double[N+2][N+2]; //density is from 0 - 100
+double dens[][] = new double[N+2][N+2]; //density is from 0 - 10
 double dens0[][] = new double[N+2][N+2];
 double source[][] = new double[N+2][N+2];
 double vx[][] = new double[N+2][N+2];
@@ -15,6 +36,21 @@ double vy[][] = new double[N+2][N+2];
 double vx0[][] = new double[N+2][N+2];
 double vy0[][] = new double[N+2][N+2];
 int obs[][] = new int[N+2][N+2]; // 0 = occupied by obstacle
+double windx = 0;
+double windy = 0;
+
+void controlEvent(ControlEvent theEvent) {
+  if (theEvent.isFrom("Reset")) {
+    // Code to reset your simulation
+    init();
+  }
+  if (theEvent.isFrom("WindX")) {
+    windx = theEvent.getValue();
+  } else if (theEvent.isFrom("WindY")) {
+    windy = theEvent.getValue();
+  }
+  // Add more control events as needed
+}
 
 void add_source(double dens[][], double source[][], double dt) {
   for (int i = 0; i <= N+1; i++) {
@@ -31,15 +67,18 @@ void init() {
       vx[i][j] = 0;
       vy[i][j] = 0;
       obs[i][j] = 1;
+      source[i][j] = 0;
     }
   }
+
+  obsMode = sourceMode = smokeMode = false;
 }
 
 void add_vel(double dt) {
   for (int i = 0; i <= N+1; i++) {
     for (int j = 0; j <= N+1; j++) {
-      vx[i][j] += random(-0.01, 0.01);
-      vy[i][j] += -0.4 * dt;
+      vx[i][j] += (random(-0.25, 0.25) + windx) * dt;
+      vy[i][j] += (-0.4 + windy) * dt;
     }
   }
 }
@@ -126,10 +165,10 @@ void set_bnd (int b, double x[][]) {
         double sum = obs[i-1][j] + obs[i+1][j] + obs[i][j-1] + obs[i][j+1]; // how much it spreads to each nearby cell
         double xVal = x[i][j];
         x[i][j] = 0;
-        
+
         if (sum == 0)
           continue;
-          
+
         x[i-1][j] += xVal * obs[i-1][j]/sum;
         x[i+1][j] += xVal * obs[i+1][j]/sum;
         x[i][j-1] += xVal * obs[i][j-1]/sum;
@@ -283,6 +322,10 @@ void keyPressed() {
     sourceMode = smokeMode = false;
     println("obstacle mode =", obsMode);
   }
+  if (key == 'u') {
+    obsMode = sourceMode = smokeMode = false;
+    println("drawing off");
+  }
   if (key == 'z') {
     init();
   }
@@ -294,7 +337,7 @@ void keyPressed() {
 
 void draw() {
 
-  println("fps:", frameRate);
+  //println("fps:", frameRate);
   background(0);
   noStroke();
   fill(255, 255, 255);

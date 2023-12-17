@@ -4,7 +4,7 @@
 
 A Semi-Lagrangian smoke simulation created by Omar Salem and Jacob Brott
 
-The project webpage can be found [here](https://sites.google.com/d/1b35ffmVdET0wjSydux8QxMoNlp8x9Mmn/p/1jY_Po0rmPxbrgLjGH6jEObNVIiACQnNQ/)
+The project webpage can be found [here](https://sites.google.com/umn.edu/smoke-simulation)
 
 ## Usage
 
